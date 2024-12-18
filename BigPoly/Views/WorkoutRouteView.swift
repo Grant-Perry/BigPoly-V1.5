@@ -78,7 +78,13 @@ struct WorkoutRouteView: View {
 					}
 					.onAppear() {
 						Task {
-							await fetchAndUpdateAddress(latitude: self.latitude, longitude: self.longitude)
+							await fetchAndUpdateAddress(latitude: self.latitude, 
+																 longitude: self.longitude)
+							
+							// update the cityName to the workout id for the detail view
+						   let workoutID = workout.uuid
+						   WorkoutCore.shared.updateCityName(for: workoutID,
+															 with: address?.city ?? "Unknown City")
 						}
 					}
 					.frame(width: UIScreen.main.bounds.width * 0.5, height: heights)
@@ -95,9 +101,7 @@ struct WorkoutRouteView: View {
 								anchor: .bottom
 							) {
 //								Image(systemName: "")
-//									.imageScale(.medium)
 							}
-//							Marker("Start", systemImage: "figure-wave", coordinate: coordinate)
 						}
 						.mapControlVisibility(.hidden)
 						.mapStyle(.hybrid(elevation: .realistic ))
@@ -151,3 +155,6 @@ struct WorkoutRouteView: View {
 	}
 }
 
+extension WorkoutRouteView {
+	
+}

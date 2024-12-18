@@ -17,6 +17,7 @@ class WorkoutCore {
 	static let shared = WorkoutCore()
 	var distance: Double = 0
 	private let healthStore = HKHealthStore()
+	var cityNames: [UUID: String] = [:] // Maps workout UUID to city names
 
 	private init() {}
 
@@ -244,5 +245,53 @@ class WorkoutCore {
 		return filteredWorkouts
 	}
 
+	func fetchPagedWorkouts(startDate: Date, endDate: Date, limit: Int, page: Int) async throws -> [HKWorkout] {
+		let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+		let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+
+		// Fetch workouts
+		let allWorkouts: [HKWorkout] = try await withCheckedThrowingContinuation { continuation in
+			let query = HKSampleQuery(sampleType: HKObjectType.workoutType(),
+											  predicate: predicate,
+											  limit: limit, // Assuming pagination is handled externally
+											  sortDescriptors: [sortDescriptor]) { _, result, error in
+				if let error = error {
+					continuation.resume(throwing: error)
+				} else if let workouts = result as? [HKWorkout] {
+					continuation.resume(returning: workouts)
+				} else {
+					continuation.resume(returning: [])
+				}
+			}
+			self.healthStore.execute(query)
+		}
+
+		// Filter workouts with valid route data
+		var filteredWorkouts: [HKWorkout] = []
+		for workout in allWorkouts {
+			if let routes = await getWorkoutRoute(workout: workout), !routes.isEmpty {
+				for route in routes {
+					let locations = await getCLocationDataForRoute(routeToExtract: route)
+					if !locations.isEmpty && locations.contains(where: { $0.coordinate.latitude != 0 && $0.coordinate.longitude != 0 }) {
+						filteredWorkouts.append(workout)
+						break // Found valid coordinates, no need to check further routes
+					}
+				}
+			}
+		}
+
+		return filteredWorkouts
+	}
+
+	func updateCityName(for workoutID: UUID, with cityName: String) {
+		DispatchQueue.main.async {
+			self.cityNames[workoutID] = cityName
+		}
+	}
+
+	func cityName(for workoutID: UUID) -> String {
+		self.cityNames[workoutID] ?? "Unknown City"
+	}
 
 }
+

@@ -21,6 +21,10 @@ struct FullMapView: View {
 	@State var poly: MKPolyline = MKPolyline(coordinates: [], count: 0)
 	@State var startWorkout = CLLocationCoordinate2D(latitude: 37.000914, longitude: -76.442160)
 	@State var endWorkout = CLLocationCoordinate2D(latitude: 37.000914, longitude: -76.2442360)
+	
+	@State private var cityName: String = "Fetching..."
+	@State private var workoutDate: Date = Date()
+	
 	var position: MapCameraPosition = .automatic
 //	var searchResults: [MKMapItem]
 //	var visibleRegion: MKCoordinateRegion?
@@ -74,7 +78,7 @@ struct FullMapView: View {
 					.background(Color.gpRed)
 					.cornerRadius(4)
 			}
-			
+
 //			Marker("Start", coordinate: startWorkout)
 //			Marker("End", coordinate: endWorkout)
 		}
@@ -84,25 +88,16 @@ struct FullMapView: View {
 				await loadRouteData()
 			}
 		}
+		
 // MARK: - safeArea for the metrics
 		.safeAreaInset(edge: .top) {
-			HStack {
-				Spacer ()
-				Text("Distance: \(String(format: "%.2f", WorkoutCore.shared.distance))")
-					.rightJustify()
-					.padding(.trailing, 30)
-					.font(.system(size: 18).bold())
-
-				Spacer ()
-			}
-			.frame(width: UIScreen.main.bounds.width, height: 75)
-			.background(.blue.gradient).opacity(/*@START_MENU_TOKEN@*/0.8/*@END_MENU_TOKEN@*/)
-			.foregroundColor(.white)
-			.shadow(color: .gray, radius: 5, x: 0, y: 2) // Add the shadow modifier
 
 
-//			.ignoresSafeArea(.all)
+			WorkoutMetricsView(cityName: cityName,
+									 workoutDate: workoutDate)
 		}
+		.navigationTitle("Workout Map")
+		.navigationBarTitleDisplayMode(.inline)
 		.mapStyle(.imagery(elevation: .realistic))
 		.background(.clear)
 
