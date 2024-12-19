@@ -6,9 +6,9 @@ import Combine
 class PolyViewModel: ObservableObject {
    @Published var workouts: [HKWorkout] = []
    @Published var isLoading: Bool = false
-   @Published var startDate: Date = Date()
-//   @Published var startDate: Date = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
-   @Published var endDate: Date = Date()
+   @Published var endDate: Date = Date() // Today
+   @Published var startDate: Date = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date().addingTimeInterval(-14 * 24 * 3600)//   @Published var startDate: Date = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
+//   @Published var endDate: Date = Date()
    @Published var limit: Int = 40
    @Published var cbFilter: Bool = true
 
