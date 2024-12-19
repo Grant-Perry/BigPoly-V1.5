@@ -1,26 +1,12 @@
-//   BigPolyApp.swift
-//   BigPoly
-//
-//   Created by: Grant Perry on 2/8/24 at 9:19 AM
-//     Modified: 
-//
-//  Copyright © 2024 Delicious Studios, LLC. - Grant Perry
-//
-
 import SwiftUI
 
 @main
 struct BigPolyApp: App {
-    var body: some Scene {
-        WindowGroup {
-			  PaginatedWorkoutsView()
-        }
-    }
+   @StateObject private var polyViewModel = PolyViewModel()
+   var body: some Scene {
+	  WindowGroup {
+		 PaginatedWorkoutsView(polyViewModel: polyViewModel)
+	  }
+   }
 }
-
-#Preview {
-	PolyView()
-}
-
-
 

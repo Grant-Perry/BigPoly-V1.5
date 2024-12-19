@@ -71,29 +71,6 @@ class WorkoutCore {
 		return workoutsWithValidCoordinates
 	}
 
-
-	// Fetches the last specified number of workouts.
-//	func fetchLastWorkouts(limit: Int) async throws -> [HKWorkout] {
-//		let predicate = HKQuery.predicateForWorkouts(with: .walking)
-//		let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
-//
-//		return try await withCheckedThrowingContinuation { continuation in
-//			let query = HKSampleQuery(sampleType: HKObjectType.workoutType(),
-//											  predicate: predicate,
-//											  limit: limit,
-//											  sortDescriptors: [sortDescriptor]) { _, result, error in
-//				if let error = error {
-//					continuation.resume(throwing: error)
-//				} else if let workouts = result as? [HKWorkout] {
-//					continuation.resume(returning: workouts)
-//				} else {
-//					continuation.resume(returning: [])
-//				}
-//			}
-//			self.healthStore.execute(query)
-//		}
-//	}
-
 	// Fetches route data for a given workout and returns the coordinates.
 	func fetchRouteData(for workout: HKWorkout) async throws -> [CLLocationCoordinate2D] {
 		// Directly use HKSeriesType.workoutRoute() since it's non-optional
@@ -154,8 +131,8 @@ class WorkoutCore {
 		}
 		// get the coordinates of the last workout
 		let coords = await getCLocationDataForRoute(routeToExtract: route)
-		var longitude = coords.last?.coordinate.longitude
-		var latitude = coords.last?.coordinate.latitude
+//		var longitude = coords.last?.coordinate.longitude
+//		var latitude = coords.last?.coordinate.latitude
 		return coords.calcDistance
 		//		return await getCLocationDataForRoute(routeToExtract: route).calcDistance
 	}

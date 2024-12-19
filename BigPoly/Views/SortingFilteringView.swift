@@ -1,33 +1,25 @@
-//   SortingFilteringView.swift
-//   BigPoly
-//
-//   Created by: Grant Perry on 2/14/24 at 11:58 AM
-//     Modified: 
-//
-//  Copyright © 2024 Delicious Studios, LLC. - Grant Perry
-//
 import SwiftUI
 
 struct SortingFilteringView: View {
-	@Environment(\.presentationMode) var presentationMode
+   @ObservedObject var polyViewModel: PolyViewModel
+   @Environment(\.dismiss) private var dismiss
 
-	@Binding var startDate: Date
-	@Binding var endDate: Date
-	@Binding var limit: Int
-	var applyFilters: () -> Void
+   var body: some View {
+	  Form {
+		 Toggle("Filter < 0.1 miles", isOn: $polyViewModel.cbFilter)
+//			.toggleStyle(.checkbox)
 
-	var body: some View {
-		Form {
-			DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-			DatePicker("End Date", selection: $endDate, displayedComponents: .date)
+		 DatePicker("Start Date", selection: $polyViewModel.startDate, displayedComponents: .date)
+		 DatePicker("End Date", selection: $polyViewModel.endDate, displayedComponents: .date)
+		 Stepper("Limit: \(polyViewModel.limit)", value: $polyViewModel.limit, in: 1...100)
 
-			Stepper("Limit: \(limit)", value: $limit, in: 1...100)
-
-			Button("Apply Filters") {
-				applyFilters() // This will reload the workouts
-				presentationMode.wrappedValue.dismiss() // Dismiss the SortingFilteringView
-			}
-		}
-		.navigationTitle("Sort & Filter")
-	}
+		 Button("Apply Filters") {
+			// Load workouts with updated filters
+			polyViewModel.loadWorkouts(page: 0)
+			// Immediately dismiss this view after applying
+			dismiss()
+		 }
+	  }
+	  .navigationTitle("Sort & Filter")
+   }
 }
