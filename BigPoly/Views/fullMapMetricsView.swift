@@ -14,7 +14,7 @@ struct fullMapMetricsView: View {
 			Text("  \(workoutDate, formatter: dateFormatter)")
 		 }
 		 Spacer()
-		 Text("Distance: \(String(format: "%.2f", distance))")
+		 Text("Distance: \(String(format: "%.2f", distance)) mi")
 	  }
 	  .padding()
 	  .frame(maxWidth: .infinity)

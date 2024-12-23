@@ -7,16 +7,17 @@ class PolyViewModel: ObservableObject {
    @Published var workouts: [HKWorkout] = []
    @Published var isLoading: Bool = false
    @Published var endDate: Date = Date() // Today
-   @Published var startDate: Date = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date().addingTimeInterval(-14 * 24 * 3600)//   @Published var startDate: Date = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
-//   @Published var endDate: Date = Date()
+   @Published var startDate: Date = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date().addingTimeInterval(-14 * 24 * 3600)
+   //   @Published var startDate: Date = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
+   //   @Published var endDate: Date = Date()
    @Published var limit: Int = 40
    @Published var cbFilter: Bool = true
-
+   @Published var useSpeedFilter: Bool = true
+   @Published var speedCollectLimit: Double = 20.0
 
    var cityNameCache: [UUID: String] = [:]
    var routeCache: [UUID: [CLLocationCoordinate2D]] = [:]
    var distanceCache: [UUID: Double] = [:]
-
    private let healthStore = HKHealthStore()
 
    init() {}
@@ -38,12 +39,19 @@ class PolyViewModel: ObservableObject {
 
 		 do {
 			try await self.requestHealthKitPermission()
-			let fetched = try await self.fetchPagedWorkouts(startDate: self.startDate, endDate: self.endDate, limit: self.limit, page: page)
+			let fetched = try await self.fetchPagedWorkouts(
+			   startDate: self.startDate,
+			   endDate: self.endDate,
+			   limit: self.limit,
+			   page: page
+			)
 
 			var filtered: [HKWorkout] = []
 			if self.cbFilter {
 			   for workout in fetched {
-				  if let distance = await self.fetchDistance(for: workout), distance >= 0.1 {
+				  let distance = await self.fetchDistance(for: workout)
+				  // Could be optional or non-optional, adjust logic accordingly:
+				  if distance >= 0.1 {
 					 filtered.append(workout)
 				  }
 			   }
@@ -51,8 +59,17 @@ class PolyViewModel: ObservableObject {
 			   filtered = fetched
 			}
 
+			// **Add these prints** to debug:
+			print("Page \(page) fetched count:", fetched.count)
+			print("Page \(page) filtered count:", filtered.count)
+
+			// Assign back on main thread:
 			DispatchQueue.main.async { [weak self] in
 			   guard let self = self else { return }
+
+			   // Another debug print AFTER we move to main thread:
+			   print("Applying filtered workouts to self.workouts. Filtered count:", filtered.count)
+
 			   if page == 0 {
 				  self.workouts = filtered
 			   } else {
@@ -69,6 +86,7 @@ class PolyViewModel: ObservableObject {
 		 }
 	  }
    }
+
 
    func fetchCityName(for workout: HKWorkout) async -> String? {
 	  if let cachedCity = cityNameCache[workout.uuid] {
@@ -99,19 +117,22 @@ class PolyViewModel: ObservableObject {
 	  }
    }
 
-   func fetchDistance(for workout: HKWorkout) async -> Double? {
-	  if let cached = distanceCache[workout.uuid] {
-		 return cached
-	  }
-	  // Need full route to compute distance
-	  guard let coords = await fetchDetailedRouteData(for: workout), !coords.isEmpty else {
+   func fetchDistance(for workout: HKWorkout) async -> Double {
+	  guard let routes = await getWorkoutRoute(workout: workout), !routes.isEmpty else {
 		 distanceCache[workout.uuid] = 0
 		 return 0
 	  }
 
-	  let distance = coords.map { $0.location }.calcDistance
-	  distanceCache[workout.uuid] = distance
-	  return distance
+	  var totalDistance: Double = 0
+	  for route in routes {
+		 // Already speed-filtered by getCLocationDataForRoute
+		 let locations = await getCLocationDataForRoute(routeToExtract: route)
+		 let routeDistance = locations.calcDistance
+		 totalDistance += routeDistance
+	  }
+
+	  distanceCache[workout.uuid] = totalDistance
+	  return totalDistance
    }
 
    func distanceForWorkout(_ workout: HKWorkout) -> Double {
@@ -203,20 +224,56 @@ class PolyViewModel: ObservableObject {
 	  do {
 		 let locations: [CLLocation] = try await withCheckedThrowingContinuation { continuation in
 			var allLocations: [CLLocation] = []
-			let query = HKWorkoutRouteQuery(route: routeToExtract) { _, locationsOrNil, done, errorOrNil in
+			var consecutiveExceeds = 0 // Number of consecutive points that exceed speed limit
+			let maxConsecutiveExceeds = 1 // threshold - Once we hit this, assume user definitely drove away
+
+			var shouldStopCollecting = false
+
+			let query = HKWorkoutRouteQuery(route: routeToExtract) { _, batchLocations, done, errorOrNil in
 			   if let error = errorOrNil {
 				  continuation.resume(throwing: error)
 				  return
 			   }
-			   if let locationsOrNil = locationsOrNil {
-				  allLocations.append(contentsOf: locationsOrNil)
-				  if done {
-					 continuation.resume(returning: allLocations)
+
+			   if let batch = batchLocations {
+				  for loc in batch {
+					 guard !shouldStopCollecting else {
+						// Already decided to stop collecting the route entirely
+						continue
+					 }
+
+					 // If filtering is OFF, just add everything
+					 guard self.useSpeedFilter else {
+						allLocations.append(loc)
+						continue
+					 }
+
+					 // Convert speed (m/s) to mph
+					 let speedMPH = loc.speed * 2.23694
+
+					 // Negative speed indicates unknown from HealthKit, treat as valid
+					 if loc.speed < 0 || speedMPH <= self.speedCollectLimit {
+						// Speed is within limit
+						consecutiveExceeds = 0
+						allLocations.append(loc)
+					 } else {
+						// Speed is above limit
+						consecutiveExceeds += 1
+
+						// If we've exceeded X consecutive times, assume user is really driving
+						if consecutiveExceeds >= maxConsecutiveExceeds {
+						   shouldStopCollecting = true
+						}
+						// Otherwise, skip appending this point
+					 }
 				  }
-			   } else {
-				  continuation.resume(returning: [])
+			   }
+
+			   if done {
+				  continuation.resume(returning: allLocations)
 			   }
 			}
+
 			self.healthStore.execute(query)
 		 }
 		 return locations
@@ -225,4 +282,5 @@ class PolyViewModel: ObservableObject {
 		 return []
 	  }
    }
+
 }

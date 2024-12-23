@@ -10,97 +10,157 @@ struct WorkoutRouteView: View {
    @State private var totalTime: TimeInterval = 0.0
    @State private var formattedTotalTime: String = "00:00"
    @State private var averagePace: String = "--:--"
+   @State private var waypointTime: String = ""  // Time of day from the first waypoint
 
    var body: some View {
-	  VStack(alignment: .leading, spacing: 0) {
-		 Text(workout.startDate.formatted(as: "MMM d, yy"))
-			.font(.system(size: 18))
-			.foregroundColor(.white)
-			.padding(.trailing, 26)
-			.frame(maxWidth: .infinity, alignment: .trailing)
-			.offset(y: -10)
+	  ZStack {
+		 VStack(spacing: 0) {
+			// TOP SECTION (City, Date, Time of Day)
+			ZStack {
+			   // Background gradient for top section
+			   Rectangle()
+				  .fill(
+					 LinearGradient(
+						colors: [.gpDeltaPurple.opacity(0.5), .clear],
+						startPoint: .top,
+						endPoint: .bottom
+					 )
+				  )
+				  .cornerRadius(12, corners: [.topLeft, .topRight])
 
-		 Text(cityName)
-			.font(.system(size: 25)).bold()
-			.foregroundColor(.white)
-			.frame(maxWidth: .infinity, alignment: .leading)
-			.padding(.leading)
+			   HStack {
+				  // City Name on the left
+				  Text(cityName)
+					 .font(.title3).bold()
+					 .frame(maxWidth: .infinity)
+					 .lineLimit(1)
+					 .minimumScaleFactor(0.65)
+					 .scaledToFit()
+					 .foregroundColor(.white)
 
-		 VStack(alignment: .leading, spacing: 5) {
-			// Distance
-			Text("Distance: \(String(format: "%.2f", distance)) mi")
-			   .font(.system(size: 18).bold())
-			   .foregroundColor(.secondary)
-			   .frame(maxWidth: .infinity, alignment: .trailing)
-			   .padding(.trailing, 30)
+				  Spacer()
 
-			// Total Time
-			Text("Time: \(formattedTotalTime)")
-			   .font(.system(size: 16))
-			   .foregroundColor(.secondary)
-			   .frame(maxWidth: .infinity, alignment: .trailing)
-			   .padding(.trailing, 30)
+				  // Date and (optional) time of day on the right
+				  VStack(alignment: .trailing, spacing: 4) {
+					 Text(workout.startDate.formatted(as: "MMM d, yy"))
+						.font(.system(size: 14))
+						.foregroundColor(.white.opacity(0.8))
 
-			// Average Pace
-			HStack {
-			   Spacer() // Push content to the trailing side
-			   (Text("Pace: \(averagePace) ")
-				  .font(.system(size: 16))
-				  .foregroundColor(.secondary) +
- 				Text("min/mi")
-				  .font(.system(size: 8))
-				  .foregroundColor(.secondary))
+					 // If we have a valid waypoint time, show it
+					 if !waypointTime.isEmpty {
+						Text(waypointTime)
+						   .font(.system(size: 10))
+						   .foregroundColor(.white.opacity(0.6))
+					 }
+				  }
+			   }
+			   .padding()
 			}
-			.frame(maxWidth: .infinity, alignment: .trailing) // Ensure the HStack aligns content to trailing
-			.padding(.trailing, 30)
+			.frame(height: 30)
 
-//			HStack {
-//			   Text("miles")
-//				  .font(.system(size: 8))
-//				  .frame(maxWidth: .infinity, alignment: .trailing)
-//				  .padding(.trailing, 30)
-//			}
+			// BOTTOM SECTION (Distance, Time, Pace)
+			ZStack {
+			   // Background gradient for bottom section
+			   Rectangle()
+				  .fill(
+					 LinearGradient(
+						colors: [.clear, .gpDeltaPurple.opacity(0.5)],
+						startPoint: .top,
+						endPoint: .bottom
+					 )
+				  )
+				  .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
+
+			   VStack(spacing: 0) {
+
+				  HStack {
+					 // Distance
+					 VStack(alignment: .leading, spacing: 2) {
+						Text("Distance")
+						   .font(.system(size: 12))
+						   .foregroundColor(.white.opacity(0.7))
+						Text("\(distance, specifier: "%.2f") mi")
+						   .font(.system(size: 16).bold())
+						   .foregroundColor(.white)
+					 }
+
+					 Spacer()
+
+					 // Time
+					 VStack(alignment: .leading, spacing: 2) {
+						Text("Time")
+						   .font(.system(size: 12))
+						   .foregroundColor(.white.opacity(0.7))
+						Text(formattedTotalTime)
+						   .font(.system(size: 16).bold())
+						   .foregroundColor(.white)
+					 }
+
+					 Spacer()
+
+					 // Pace
+					 VStack(alignment: .leading, spacing: 2) {
+						Text("Pace")
+						   .font(.system(size: 12))
+						   .foregroundColor(.white.opacity(0.7))
+						HStack(spacing: 2) {
+						   Text(averagePace)
+							  .font(.system(size: 16).bold())
+							  .foregroundColor(.white)
+						   Text("min/mi")
+							  .font(.system(size: 10))
+							  .foregroundColor(.white.opacity(0.7))
+						}
+					 }
+				  }
+				  .padding(.horizontal, 16)
+				  .padding(.vertical, 12)
+			   }
+			}
+			.frame(height: 55)
 		 }
-		 .foregroundColor(.white)
-		 .padding(.leading, 20)
-		 .frame(maxWidth: .infinity, alignment: .leading)
-
 	  }
-	  .frame(width: UIScreen.main.bounds.width * 0.85, height: 150)
-	  .background(
-		 LinearGradient(colors: [.gpDeltaPurple, .clear], startPoint: .top, endPoint: .bottom)
-	  )
-	  .cornerRadius(10)
-	  // Existing overlay and shadow code if any
+	  .frame(width: UIScreen.main.bounds.width * 0.85, height: 100)
+//	  .border(Color.white.opacity(0.7), width: 1)
 	  .onAppear {
 		 Task {
+
+			// Fetch city name
 			if let fetchedCity = await polyViewModel.fetchCityName(for: workout) {
 			   cityName = fetchedCity
 			} else {
 			   cityName = "Unknown City"
 			}
+
+			// Fetch distance
 			distance = await polyViewModel.fetchDistance(for: workout) ?? 0
 
-			// Compute total time from workout.duration (in seconds)
+			// Compute total time from workout.duration (seconds)
 			totalTime = workout.duration
 			formattedTotalTime = formatDuration(totalTime)
 
-			// Compute average pace: totalTime (min) / distance (miles)
-			// average pace in min/mi
+			// Compute average pace (min/mile)
 			let totalMinutes = totalTime / 60.0
-			if distance > 0 {
-			   let pace = totalMinutes / distance
-			   averagePace = formatPace(pace)
-			} else {
-			   averagePace = "--:--"
+			averagePace = distance > 0
+			? formatPace(totalMinutes / distance)
+			: "--:--"
+
+			// If first waypoint is available, get its time of day
+			if let routes = await polyViewModel.getWorkoutRoute(workout: workout),
+			   let firstRoute = routes.first {
+			   let locations = await polyViewModel.getCLocationDataForRoute(routeToExtract: firstRoute)
+			   if let firstLoc = locations.first {
+				  waypointTime = formatTimeOfDay(date: firstLoc.timestamp)
+			   }
 			}
 		 }
 	  }
 	  .preferredColorScheme(.dark)
    }
 
-   // Helper to format duration as "HH:MM:SS" or "MM:SS"
-   func formatDuration(_ duration: TimeInterval) -> String {
+   // MARK: - Helper Methods
+
+   private func formatDuration(_ duration: TimeInterval) -> String {
 	  let hours = Int(duration) / 3600
 	  let minutes = (Int(duration) % 3600) / 60
 	  let seconds = Int(duration) % 60
@@ -112,12 +172,16 @@ struct WorkoutRouteView: View {
 	  }
    }
 
-   // Helper to format pace (which is given in minutes per mile)
-   // pace is a Double representing minutes per mile
-   func formatPace(_ pace: Double) -> String {
+   private func formatPace(_ pace: Double) -> String {
 	  let wholeMinutes = Int(pace)
 	  let fractionalPart = pace - Double(wholeMinutes)
 	  let seconds = Int(fractionalPart * 60.0)
 	  return String(format: "%d:%02d", wholeMinutes, seconds)
+   }
+
+   private func formatTimeOfDay(date: Date) -> String {
+	  let formatter = DateFormatter()
+	  formatter.dateFormat = "h:mm a" // e.g. "7:42 AM"
+	  return formatter.string(from: date)
    }
 }
