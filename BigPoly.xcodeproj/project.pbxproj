@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		9B1960EB2B76834000D55497 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B1960EA2B76833F00D55497 /* HealthKit.framework */; };
 		9B4643242B751A6700833432 /* BigPolyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4643232B751A6700833432 /* BigPolyApp.swift */; };
-		9B4643262B751A6700833432 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4643252B751A6700833432 /* ContentView.swift */; };
 		9B4643282B751A6800833432 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9B4643272B751A6800833432 /* Assets.xcassets */; };
 		9B46432B2B751A6800833432 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9B46432A2B751A6800833432 /* Preview Assets.xcassets */; };
 		9B4643372B751AE900833432 /* Color+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4643362B751AE900833432 /* Color+Ext.swift */; };
@@ -28,7 +27,6 @@
 		9B5269E22B789E2B00695BA6 /* ViewExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5269E12B789E2B00695BA6 /* ViewExt.swift */; };
 		9B5269E42B791BE100695BA6 /* GradientPathRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5269E32B791BE100695BA6 /* GradientPathRenderer.swift */; };
 		9B5269E62B7928C300695BA6 /* Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5269E52B7928C300695BA6 /* Address.swift */; };
-		9B5269EA2B7A8D6200695BA6 /* DELETETHIS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5269E92B7A8D6200695BA6 /* DELETETHIS.swift */; };
 		9B5269EC2B7AC1BF00695BA6 /* DateExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5269EB2B7AC1BF00695BA6 /* DateExt.swift */; };
 		9B5269EE2B7C027D00695BA6 /* WorkoutRouteEXT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5269ED2B7C027D00695BA6 /* WorkoutRouteEXT.swift */; };
 		9B5269F02B7D1F2400695BA6 /* PaginatedWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5269EF2B7D1F2400695BA6 /* PaginatedWorkoutView.swift */; };
@@ -44,7 +42,6 @@
 		9B1960ED2B76854100D55497 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9B4643202B751A6700833432 /* BigPoly.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BigPoly.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B4643232B751A6700833432 /* BigPolyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigPolyApp.swift; sourceTree = "<group>"; };
-		9B4643252B751A6700833432 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9B4643272B751A6800833432 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9B46432A2B751A6800833432 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9B4643362B751AE900833432 /* Color+Ext.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Color+Ext.swift"; sourceTree = "<group>"; };
@@ -63,7 +60,6 @@
 		9B5269E12B789E2B00695BA6 /* ViewExt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExt.swift; sourceTree = "<group>"; };
 		9B5269E32B791BE100695BA6 /* GradientPathRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradientPathRenderer.swift; sourceTree = "<group>"; };
 		9B5269E52B7928C300695BA6 /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
-		9B5269E92B7A8D6200695BA6 /* DELETETHIS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DELETETHIS.swift; sourceTree = "<group>"; };
 		9B5269EB2B7AC1BF00695BA6 /* DateExt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExt.swift; sourceTree = "<group>"; };
 		9B5269ED2B7C027D00695BA6 /* WorkoutRouteEXT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRouteEXT.swift; sourceTree = "<group>"; };
 		9B5269EF2B7D1F2400695BA6 /* PaginatedWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaginatedWorkoutView.swift; sourceTree = "<group>"; };
@@ -153,9 +149,7 @@
 		9B4643322B751A8B00833432 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				9B4643252B751A6700833432 /* ContentView.swift */,
 				9B5269D92B77C92E00695BA6 /* CustomMapView.swift */,
-				9B5269E92B7A8D6200695BA6 /* DELETETHIS.swift */,
 				9B5269F72B7D351B00695BA6 /* fullMapMetricsView.swift */,
 				9B46433F2B75233000833432 /* fullMapView.swift */,
 				9B46433D2B7522DE00833432 /* LoadingView.swift */,
@@ -287,7 +281,6 @@
 				9B5269E62B7928C300695BA6 /* Address.swift in Sources */,
 				9B4643392B751C1D00833432 /* polyView.swift in Sources */,
 				9B5269EC2B7AC1BF00695BA6 /* DateExt.swift in Sources */,
-				9B4643262B751A6700833432 /* ContentView.swift in Sources */,
 				9B5269E42B791BE100695BA6 /* GradientPathRenderer.swift in Sources */,
 				9B5269F22B7D201F00695BA6 /* HKActivityTypeEXT.swift in Sources */,
 				9B4643242B751A6700833432 /* BigPolyApp.swift in Sources */,
@@ -303,7 +296,6 @@
 				9B5269EE2B7C027D00695BA6 /* WorkoutRouteEXT.swift in Sources */,
 				9B5269DE2B78091900695BA6 /* WorkoutRouteView.swift in Sources */,
 				9B46433C2B751D5100833432 /* CityCoords.swift in Sources */,
-				9B5269EA2B7A8D6200695BA6 /* DELETETHIS.swift in Sources */,
 				9B5269DC2B77D8A800695BA6 /* CLLArrayExt.swift in Sources */,
 				9B5269F42B7D28BE00695BA6 /* SortingFilteringView.swift in Sources */,
 				9B4643462B758B8700833432 /* MapView.swift in Sources */,
@@ -459,7 +451,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.55;
+				MARKETING_VERSION = 1.70;
 				PRODUCT_BUNDLE_IDENTIFIER = com.grantperry.BigPoly;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -492,7 +484,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.55;
+				MARKETING_VERSION = 1.70;
 				PRODUCT_BUNDLE_IDENTIFIER = com.grantperry.BigPoly;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

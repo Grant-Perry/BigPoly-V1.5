@@ -15,7 +15,7 @@ struct FullMapView: View {
 		 if !routeCoordinates.isEmpty {
 			GradientMapView(coordinates: routeCoordinates)
 			   .onAppear {
-				  // Optionally you could handle region or other updates here if needed
+				  // Optionally set region or further logic
 			   }
 		 } else {
 			Text("Loading route...")
@@ -24,13 +24,13 @@ struct FullMapView: View {
 	  }
 	  .onAppear {
 		 Task {
-			if let fetchedRoute = await polyViewModel.fetchDetailedRouteData(for: workout) {
-			   routeCoordinates = fetchedRoute
+			if let fetchedCoordinates = await polyViewModel.fetchDetailedRouteData(for: workout) {
+			   routeCoordinates = fetchedCoordinates
 			}
 			if let fetchedCity = await polyViewModel.fetchCityName(for: workout) {
 			   cityName = fetchedCity
 			}
-			distance = await polyViewModel.fetchDistance(for: workout) ?? 0
+			distance = await polyViewModel.fetchDistance(for: workout)
 			workoutDate = workout.startDate
 		 }
 	  }
@@ -43,7 +43,3 @@ struct FullMapView: View {
 	  .navigationBarTitleDisplayMode(.inline)
    }
 }
-
-// MARK: - GradientPathRenderer
-
-

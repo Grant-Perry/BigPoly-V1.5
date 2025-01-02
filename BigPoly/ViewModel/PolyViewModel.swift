@@ -3,25 +3,43 @@ import HealthKit
 import CoreLocation
 import Combine
 
+/// A container for watch-provided metadata
+struct WatchMetadata {
+   let finalDistance: Double?
+   let finalDuration: Double?
+   let averageSpeed: Double?
+   let weatherCity: String?
+   let weatherTemp: String?
+   let weatherSymbol: String?
+   let windSpeed: String?
+   let windDirection: String?
+}
+
 class PolyViewModel: ObservableObject {
    @Published var workouts: [HKWorkout] = []
    @Published var isLoading: Bool = false
-   @Published var endDate: Date = Date() // Today
-   @Published var startDate: Date = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date().addingTimeInterval(-14 * 24 * 3600)
-   //   @Published var startDate: Date = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
-   //   @Published var endDate: Date = Date()
-   @Published var limit: Int = 40
-   @Published var cbFilter: Bool = true
-   @Published var useSpeedFilter: Bool = true
-   @Published var speedCollectLimit: Double = 20.0
 
+   // Filter toggles
+   @Published var isShortDistanceFilterEnabled: Bool = true
+
+   // Date range
+   @Published var startDate: Date = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date().addingTimeInterval(-14 * 24 * 3600)
+   @Published var endDate: Date = Date()
+
+   // Paged loading
+   @Published var maxWorkoutCount: Int = 40
+
+   // Caches
    var cityNameCache: [UUID: String] = [:]
    var routeCache: [UUID: [CLLocationCoordinate2D]] = [:]
    var distanceCache: [UUID: Double] = [:]
+   var metadataCache: [UUID: WatchMetadata] = [:]
+
    private let healthStore = HKHealthStore()
 
    init() {}
 
+   // MARK: - Authorization
    func requestHealthKitPermission() async throws {
 	  let typesToRead: Set<HKObjectType> = [
 		 HKObjectType.workoutType(),
@@ -30,70 +48,66 @@ class PolyViewModel: ObservableObject {
 	  try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
    }
 
+   // MARK: - Load
    func loadWorkouts(page: Int) {
-	  guard !isLoading else { return }
+	  if isLoading { return }
 	  isLoading = true
 
-	  Task { [weak self] in
-		 guard let self = self else { return }
-
+	  Task {
 		 do {
-			try await self.requestHealthKitPermission()
-			let fetched = try await self.fetchPagedWorkouts(
-			   startDate: self.startDate,
-			   endDate: self.endDate,
-			   limit: self.limit,
-			   page: page
-			)
-
-			var filtered: [HKWorkout] = []
-			if self.cbFilter {
-			   for workout in fetched {
-				  let distance = await self.fetchDistance(for: workout)
-				  // Could be optional or non-optional, adjust logic accordingly:
-				  if distance >= 0.1 {
-					 filtered.append(workout)
+			try await requestHealthKitPermission()
+			let fetched = try await fetchPagedWorkouts(startDate: startDate,
+													   endDate: endDate,
+													   limit: maxWorkoutCount,
+													   page: page)
+			var finalList: [HKWorkout] = []
+			for wk in fetched {
+			   let dist = await fetchDistance(for: wk)
+			   // If user wants to filter out short workouts
+			   if isShortDistanceFilterEnabled {
+				  if dist >= 0.1 {
+					 finalList.append(wk)
 				  }
+			   } else {
+				  finalList.append(wk)
 			   }
-			} else {
-			   filtered = fetched
 			}
 
-			// **Add these prints** to debug:
-			print("Page \(page) fetched count:", fetched.count)
-			print("Page \(page) filtered count:", filtered.count)
-
-			// Assign back on main thread:
-			DispatchQueue.main.async { [weak self] in
-			   guard let self = self else { return }
-
-			   // Another debug print AFTER we move to main thread:
-			   print("Applying filtered workouts to self.workouts. Filtered count:", filtered.count)
-
+			DispatchQueue.main.async {
 			   if page == 0 {
-				  self.workouts = filtered
+				  self.workouts = finalList
 			   } else {
-				  self.workouts.append(contentsOf: filtered)
+				  self.workouts.append(contentsOf: finalList)
 			   }
 			   self.isLoading = false
 			}
 		 } catch {
-			DispatchQueue.main.async { [weak self] in
-			   guard let self = self else { return }
-			   print("Failed to load workouts: \(error)")
+			DispatchQueue.main.async {
+			   print("Failed to load workouts: \(error.localizedDescription)")
 			   self.isLoading = false
 			}
 		 }
 	  }
    }
 
-
+   // MARK: - City Name
    func fetchCityName(for workout: HKWorkout) async -> String? {
+	  // Check watch metadata first
+	  if let meta = await getMetadata(for: workout),
+		 let cityFromWatch = meta.weatherCity,
+		 !cityFromWatch.isEmpty
+	  {
+	  cityNameCache[workout.uuid] = cityFromWatch
+	  return cityFromWatch
+	  }
+
+	  // Fallback to geocode
 	  if let cachedCity = cityNameCache[workout.uuid] {
 		 return cachedCity
 	  }
 
-	  guard let routes = await getWorkoutRoute(workout: workout), let route = routes.first else {
+	  guard let routes = await getWorkoutRoute(workout: workout),
+			let route = routes.first else {
 		 cityNameCache[workout.uuid] = "Unknown City"
 		 return "Unknown City"
 	  }
@@ -107,180 +121,188 @@ class PolyViewModel: ObservableObject {
 	  let geocoder = CLGeocoder()
 	  do {
 		 let placemarks = try await geocoder.reverseGeocodeLocation(firstLocation)
-		 let city = placemarks.first?.locality ?? "Unknown City"
-		 cityNameCache[workout.uuid] = city
-		 return city
+		 let foundCity = placemarks.first?.locality ?? "Unknown City"
+		 cityNameCache[workout.uuid] = foundCity
+		 return foundCity
 	  } catch {
-		 print("Address not found: \(error.localizedDescription)")
+		 print("Reverse geocode error: \(error.localizedDescription)")
 		 cityNameCache[workout.uuid] = "Unknown City"
 		 return "Unknown City"
 	  }
    }
 
+   // MARK: - Distance
    func fetchDistance(for workout: HKWorkout) async -> Double {
-	  guard let routes = await getWorkoutRoute(workout: workout), !routes.isEmpty else {
+	  if let cachedDistance = distanceCache[workout.uuid] {
+		 return cachedDistance
+	  }
+
+	  // Try watch metadata first
+	  if let meta = await getMetadata(for: workout),
+		 let finalDist = meta.finalDistance {
+		 distanceCache[workout.uuid] = finalDist
+		 return finalDist
+	  }
+
+	  // Fallback => sum route distances
+	  guard let routes = await getWorkoutRoute(workout: workout),
+			!routes.isEmpty else {
 		 distanceCache[workout.uuid] = 0
 		 return 0
 	  }
 
-	  var totalDistance: Double = 0
+	  var totalMiles = 0.0
 	  for route in routes {
-		 // Already speed-filtered by getCLocationDataForRoute
-		 let locations = await getCLocationDataForRoute(routeToExtract: route)
-		 let routeDistance = locations.calcDistance
-		 totalDistance += routeDistance
+		 let locs = await getCLocationDataForRoute(routeToExtract: route)
+		 let routeDist = locs.calcDistance // this extension returns distance in miles
+		 totalMiles += routeDist
 	  }
 
-	  distanceCache[workout.uuid] = totalDistance
-	  return totalDistance
+	  distanceCache[workout.uuid] = totalMiles
+	  return totalMiles
    }
 
-   func distanceForWorkout(_ workout: HKWorkout) -> Double {
-	  distanceCache[workout.uuid] ?? 0
-   }
-
+   // MARK: - Detailed Route
    func fetchDetailedRouteData(for workout: HKWorkout) async -> [CLLocationCoordinate2D]? {
-	  if let cachedRoute = routeCache[workout.uuid] {
-		 return cachedRoute
+	  if let existing = routeCache[workout.uuid] {
+		 return existing
 	  }
 
-	  guard let routes = await getWorkoutRoute(workout: workout), !routes.isEmpty else {
+	  guard let routes = await getWorkoutRoute(workout: workout),
+			!routes.isEmpty else {
 		 return nil
 	  }
 
-	  var allCoordinates: [CLLocationCoordinate2D] = []
+	  var combinedCoordinates: [CLLocationCoordinate2D] = []
 	  for route in routes {
-		 let locations = await getCLocationDataForRoute(routeToExtract: route)
-		 if !locations.isEmpty {
-			allCoordinates.append(contentsOf: locations.map { $0.coordinate })
-		 }
+		 let locs = await getCLocationDataForRoute(routeToExtract: route)
+		 combinedCoordinates.append(contentsOf: locs.map { $0.coordinate })
 	  }
 
-	  if !allCoordinates.isEmpty {
-		 routeCache[workout.uuid] = allCoordinates
-		 return allCoordinates
+	  if !combinedCoordinates.isEmpty {
+		 routeCache[workout.uuid] = combinedCoordinates
+		 return combinedCoordinates
 	  } else {
 		 return nil
 	  }
    }
 
-   func fetchPagedWorkouts(startDate: Date, endDate: Date, limit: Int, page: Int) async throws -> [HKWorkout] {
-	  let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: [.strictStartDate, .strictEndDate])
-	  let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false) // If you want chronological order from start to end
+   // MARK: - Paged Workouts
+   func fetchPagedWorkouts(startDate: Date, endDate: Date,
+						   limit: Int, page: Int) async throws -> [HKWorkout] {
+	  let predicate = HKQuery.predicateForSamples(withStart: startDate,
+												  end: endDate,
+												  options: [.strictStartDate, .strictEndDate])
+	  let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
 
 	  let allWorkouts: [HKWorkout] = try await withCheckedThrowingContinuation { continuation in
-		 let query = HKSampleQuery(sampleType: HKObjectType.workoutType(),
+		 let query = HKSampleQuery(sampleType: .workoutType(),
 								   predicate: predicate,
 								   limit: limit,
 								   sortDescriptors: [sortDescriptor]) { _, result, error in
-			if let error = error {
-			   continuation.resume(throwing: error)
-			} else if let workouts = result as? [HKWorkout] {
-			   continuation.resume(returning: workouts)
+			if let err = error {
+			   continuation.resume(throwing: err)
+			} else if let workoutsList = result as? [HKWorkout] {
+			   continuation.resume(returning: workoutsList)
 			} else {
 			   continuation.resume(returning: [])
 			}
 		 }
-		 self.healthStore.execute(query)
+		 healthStore.execute(query)
 	  }
 
-
-	  var filteredWorkouts: [HKWorkout] = []
-	  for w in allWorkouts {
-		 if let routes = await getWorkoutRoute(workout: w), !routes.isEmpty {
-			for route in routes {
-			   let locations = await getCLocationDataForRoute(routeToExtract: route)
-			   if locations.contains(where: { $0.coordinate.latitude != 0 && $0.coordinate.longitude != 0 }) {
-				  filteredWorkouts.append(w)
+	  var finalOutput: [HKWorkout] = []
+	  for singleWorkout in allWorkouts {
+		 if let routes = await getWorkoutRoute(workout: singleWorkout),
+			!routes.isEmpty {
+			for rt in routes {
+			   let locs = await getCLocationDataForRoute(routeToExtract: rt)
+			   if locs.contains(where: { $0.coordinate.latitude != 0 && $0.coordinate.longitude != 0 }) {
+				  finalOutput.append(singleWorkout)
 				  break
 			   }
 			}
 		 }
 	  }
 
-	  return filteredWorkouts
+	  return finalOutput
    }
 
+   // MARK: - Route Queries
    func getWorkoutRoute(workout: HKWorkout) async -> [HKWorkoutRoute]? {
-	  let byWorkout = HKQuery.predicateForObjects(from: workout)
-	  let samples = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
+	  let byWorkoutPredicate = HKQuery.predicateForObjects(from: workout)
+	  let routeSamples = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
 		 healthStore.execute(HKAnchoredObjectQuery(type: HKSeriesType.workoutRoute(),
-												   predicate: byWorkout,
+												   predicate: byWorkoutPredicate,
 												   anchor: nil,
-												   limit: HKObjectQueryNoLimit) { _, samples, _, _, error in
-			if let error = error {
-			   continuation.resume(throwing: error)
-			   return
+												   limit: HKObjectQueryNoLimit) { _, samples, _, _, err in
+			if let e = err {
+			   continuation.resume(throwing: e)
+			} else {
+			   let s = samples ?? []
+			   continuation.resume(returning: s)
 			}
-			let s = samples ?? []
-			continuation.resume(returning: s)
 		 })
 	  }
-	  guard let workouts = samples as? [HKWorkoutRoute] else { return nil }
-	  return workouts
+	  guard let wkroutes = routeSamples as? [HKWorkoutRoute], !wkroutes.isEmpty else {
+		 return nil
+	  }
+	  return wkroutes
    }
 
    func getCLocationDataForRoute(routeToExtract: HKWorkoutRoute) async -> [CLLocation] {
 	  do {
-		 let locations: [CLLocation] = try await withCheckedThrowingContinuation { continuation in
-			var allLocations: [CLLocation] = []
-			var consecutiveExceeds = 0 // Number of consecutive points that exceed speed limit
-			let maxConsecutiveExceeds = 1 // threshold - Once we hit this, assume user definitely drove away
-
-			var shouldStopCollecting = false
-
-			let query = HKWorkoutRouteQuery(route: routeToExtract) { _, batchLocations, done, errorOrNil in
-			   if let error = errorOrNil {
-				  continuation.resume(throwing: error)
+		 let allLocations: [CLLocation] = try await withCheckedThrowingContinuation { continuation in
+			var merged: [CLLocation] = []
+			let locQuery = HKWorkoutRouteQuery(route: routeToExtract) { _, batchLocations, done, queryError in
+			   if let someError = queryError {
+				  continuation.resume(throwing: someError)
 				  return
 			   }
-
 			   if let batch = batchLocations {
-				  for loc in batch {
-					 guard !shouldStopCollecting else {
-						// Already decided to stop collecting the route entirely
-						continue
-					 }
-
-					 // If filtering is OFF, just add everything
-					 guard self.useSpeedFilter else {
-						allLocations.append(loc)
-						continue
-					 }
-
-					 // Convert speed (m/s) to mph
-					 let speedMPH = loc.speed * 2.23694
-
-					 // Negative speed indicates unknown from HealthKit, treat as valid
-					 if loc.speed < 0 || speedMPH <= self.speedCollectLimit {
-						// Speed is within limit
-						consecutiveExceeds = 0
-						allLocations.append(loc)
-					 } else {
-						// Speed is above limit
-						consecutiveExceeds += 1
-
-						// If we've exceeded X consecutive times, assume user is really driving
-						if consecutiveExceeds >= maxConsecutiveExceeds {
-						   shouldStopCollecting = true
-						}
-						// Otherwise, skip appending this point
-					 }
-				  }
+				  merged.append(contentsOf: batch)
 			   }
-
 			   if done {
-				  continuation.resume(returning: allLocations)
+				  continuation.resume(returning: merged)
 			   }
 			}
-
-			self.healthStore.execute(query)
+			healthStore.execute(locQuery)
 		 }
-		 return locations
+		 return allLocations
 	  } catch {
-		 print("Error fetching location data: \(error.localizedDescription)")
+		 print("Error fetching route location data: \(error.localizedDescription)")
 		 return []
 	  }
    }
 
+   // MARK: - Metadata
+   private func getMetadata(for workout: HKWorkout) async -> WatchMetadata? {
+	  if let existing = metadataCache[workout.uuid] {
+		 return existing
+	  }
+	  guard let dict = workout.metadata, !dict.isEmpty else {
+		 return nil
+	  }
+	  let watchMeta = WatchMetadata(
+		 finalDistance: parseDouble(dict, key: "finalDistance"),
+		 finalDuration: parseDouble(dict, key: "finalDuration"),
+		 averageSpeed: parseDouble(dict, key: "averageSpeed"),
+		 weatherCity: dict["weatherCity"] as? String,
+		 weatherTemp: dict["weatherTemp"] as? String,
+		 weatherSymbol: dict["weatherSymbol"] as? String,
+		 windSpeed: dict["windSpeed"] as? String,
+		 windDirection: dict["windDirection"] as? String
+	  )
+	  metadataCache[workout.uuid] = watchMeta
+	  return watchMeta
+   }
+
+   private func parseDouble(_ dictionary: [String: Any], key: String) -> Double? {
+	  if let val = dictionary[key] as? Double {
+		 return val
+	  } else if let str = dictionary[key] as? String, let dbl = Double(str) {
+		 return dbl
+	  }
+	  return nil
+   }
 }

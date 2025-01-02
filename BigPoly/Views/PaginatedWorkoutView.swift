@@ -4,16 +4,18 @@ import Observation
 
 struct PaginatedWorkoutsView: View {
    @ObservedObject var polyViewModel: PolyViewModel
-   @State private var currentPage = 0
+   @State private var currentPageIndex = 0
 
    var body: some View {
 	  NavigationView {
 		 VStack {
-			NavigationLink("Sort & Filter", destination: SortingFilteringView(polyViewModel: polyViewModel))
+			NavigationLink("Sort & Filter") {
+			   SortingFilteringView(polyViewModel: polyViewModel)
+			}
 
-			List(polyViewModel.workouts, id: \.uuid) { workout in
-			   NavigationLink(destination: FullMapView(workout: workout, polyViewModel: polyViewModel)) {
-				  WorkoutRouteView(workout: workout, polyViewModel: polyViewModel)
+			List(polyViewModel.workouts, id: \.uuid) { workoutItem in
+			   NavigationLink(destination: FullMapView(workout: workoutItem, polyViewModel: polyViewModel)) {
+				  WorkoutRouteView(workout: workoutItem, polyViewModel: polyViewModel)
 			   }
 			}
 
@@ -22,16 +24,14 @@ struct PaginatedWorkoutsView: View {
 			}
 
 			Button("Load More") {
-			   currentPage += 1
-			   polyViewModel.loadWorkouts(page: currentPage)
+			   currentPageIndex += 1
+			   polyViewModel.loadWorkouts(page: currentPageIndex)
 			}
 		 }
 		 .navigationTitle("Workouts")
 	  }
 	  .onAppear {
-		 polyViewModel.loadWorkouts(page: currentPage)
+		 polyViewModel.loadWorkouts(page: currentPageIndex)
 	  }
    }
-   
 }
-

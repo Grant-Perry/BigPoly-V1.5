@@ -23,14 +23,15 @@ struct MapView: UIViewRepresentable {
    }
 
    class Coordinator: NSObject, MKMapViewDelegate {
-	  var parent: MapView
-	  init(_ parent: MapView) {
-		 self.parent = parent
+	  var parentView: MapView
+
+	  init(_ parentView: MapView) {
+		 self.parentView = parentView
 	  }
 
 	  func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-		 if let polyline = overlay as? MKPolyline {
-			let renderer = MKPolylineRenderer(polyline: polyline)
+		 if let lineOverlay = overlay as? MKPolyline {
+			let renderer = MKPolylineRenderer(polyline: lineOverlay)
 			renderer.strokeColor = .blue
 			renderer.lineWidth = 4
 			return renderer
