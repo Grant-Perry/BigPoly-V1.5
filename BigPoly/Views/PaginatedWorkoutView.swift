@@ -8,30 +8,42 @@ struct PaginatedWorkoutsView: View {
 
    var body: some View {
 	  NavigationView {
-		 VStack {
+		 VStack(spacing: 0) {
 			NavigationLink("Sort & Filter", destination: SortingFilteringView(polyViewModel: polyViewModel))
 
 			List(polyViewModel.workouts, id: \.uuid) { workout in
 			   NavigationLink(destination: FullMapView(workout: workout, polyViewModel: polyViewModel)) {
 				  WorkoutRouteView(workout: workout, polyViewModel: polyViewModel)
 			   }
+			   .offset(y: -15)
 			}
 
 			if polyViewModel.isLoading {
 			   ProgressView()
 			}
 
-			Button("Load More") {
-			   currentPage += 1
-			   polyViewModel.loadWorkouts(page: currentPage)
-			}
+			//			Button(action: {
+			//			   currentPage += 1
+			//			   polyViewModel.loadWorkouts(page: currentPage)
+			//			}) {
+			//			   Text("Load More")
+			//				  .foregroundColor(.blue)
+			//				  .font(.system(size: 20))
+			//			}
+			//			.padding(.vertical, 8)
+
+			Text("\(AppConstants.appName) - ver: \(AppConstants.getVersion())")
+			   .font(.system(size: 14))
+			   .foregroundColor(.white)
+			   .frame(maxWidth: .infinity, alignment: .center)
+			   .padding(.bottom, 8)
 		 }
-		 .navigationTitle("Workouts")
+		 .navigationTitle("\(AppConstants.title)")
 	  }
 	  .onAppear {
+		 currentPage = 0
 		 polyViewModel.loadWorkouts(page: currentPage)
 	  }
    }
-   
-}
 
+}
