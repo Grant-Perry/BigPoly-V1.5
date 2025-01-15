@@ -30,30 +30,36 @@ struct WorkoutRouteView: View {
 
    var body: some View {
 	  VStack(spacing: 8) {
-		 // Top section with city and date
+		 /// Top section with city and date
 		 HStack(alignment: .top) {
-			// Left side - City and Weather
+			/// Left side - City and Weather
 			VStack(alignment: .leading, spacing: 4) {
 			   Text(cityName)
 				  .font(.system(size: 24, weight: .bold))
 				  .foregroundColor(.white)
 				  .frame(maxWidth: .infinity, alignment: .leading)
 
-			   // Weather Info if available
+			   /// Weather Info if available
 			   if let wTemp = weatherTemp, let wSymbol = weatherSymbol {
 				  HStack(spacing: 6) {
 					 Image(systemName: wSymbol)
 						.foregroundColor(.white.opacity(0.9))
+
 					 Text("\(wTemp)°")
 						.font(.system(size: 15))
 						.foregroundColor(.white.opacity(0.9))
+
+					 /// Show embedded-weather icon
+					 Image(systemName: "face.dashed.fill")
+						.font(.system(size: 7))
+						.foregroundColor(.gpGreen)
 				  }
 			   }
 			}
 
 			Spacer()
 
-			// Right side - Date and Time
+			/// Right side - Date and Time
 			if let routeDate = routeStartDate {
 			   VStack(alignment: .trailing, spacing: 4) {
 				  Text(routeDate, formatter: dateFormatter)
@@ -67,11 +73,11 @@ struct WorkoutRouteView: View {
 			}
 		 }
 
-		 // Bottom section with Duration, Pace, and Distance
+		 /// Bottom section with Duration, Pace, and Distance
 		 HStack(alignment: .top) {
 			Spacer()
 
-			// Duration Column
+			/// Duration Column
 			VStack(alignment: .trailing, spacing: 4) {
 			   Text("Duration")
 				  .font(.system(size: 15))
@@ -84,7 +90,7 @@ struct WorkoutRouteView: View {
 			Spacer()
 			   .frame(width: 40)
 
-			// Pace Column - now always showing min/mi
+			/// Pace Column - always showing min/mi
 			VStack(alignment: .trailing, spacing: 4) {
 			   Text("Pace")
 				  .font(.system(size: 15))
@@ -97,7 +103,7 @@ struct WorkoutRouteView: View {
 			Spacer()
 			   .frame(width: 40)
 
-			// Distance Column
+			/// Distance Column
 			VStack(alignment: .trailing, spacing: 4) {
 			   Text("Distance")
 				  .font(.system(size: 15))

@@ -10,7 +10,7 @@ class PolyViewModel: ObservableObject {
    @Published var startDate: Date = Calendar.current.date(byAdding: .day, value: -14, to: Date())
    ?? Date().addingTimeInterval(-14 * 24 * 3600)
    @Published var limit: Int = 15
-   @Published var shortRouteFilter: Bool = true
+   @Published var shortRouteFilter: Bool = false // default to off
 
    /// Cache for city names keyed by workout UUID.
    var cityNameCache: [UUID: String] = [:]
@@ -36,8 +36,18 @@ class PolyViewModel: ObservableObject {
    private let METADATA_KEY_WEATHER_TEMP   = "weatherTemp"
    private let METADATA_KEY_WEATHER_SYMBOL = "weatherSymbol"
 
-   init() {}
+   /// Call HealthKit permission as soon as this ViewModel is created to ensure compliance.
+   init() {
+	  Task {
+		 do {
+			try await requestHealthKitPermission()
+		 } catch {
+			print("HealthKit permission request failed: \(error)")
+		 }
+	  }
+   }
 
+   /// Request HealthKit authorization up front.
    func requestHealthKitPermission() async throws {
 	  let typesToRead: Set<HKObjectType> = [
 		 HKObjectType.workoutType(),
@@ -46,7 +56,7 @@ class PolyViewModel: ObservableObject {
 	  try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
    }
 
-   /// Loads workouts in pages, applying filtering if cbFilter is true.
+   /// Loads workouts in pages, fetching more from HK to account for short-route filtering so we don't lose them all.
    func loadWorkouts(page: Int) {
 	  guard !isLoading else { return }
 	  isLoading = true
@@ -54,30 +64,35 @@ class PolyViewModel: ObservableObject {
 	  Task { [weak self] in
 		 guard let self = self else { return }
 		 do {
-			try await self.requestHealthKitPermission()
-			let fetched = try await self.fetchPagedWorkouts(
+			// Fetch from HealthKit with a larger limit to compensate for any workouts we drop via filters.
+			let bigLimit = self.limit * 5
+			let rawWorkouts = try await self.fetchPagedWorkouts(
 			   startDate: self.startDate,
 			   endDate: self.endDate,
-			   limit: self.limit,
+			   limit: bigLimit,
 			   page: page
 			)
 
+			// If shortRouteFilter is on, exclude <0.1 mile workouts, but do it after we fetch enough from HK.
 			var filtered: [HKWorkout] = []
 			if self.shortRouteFilter {
-			   for workout in fetched {
+			   for workout in rawWorkouts {
 				  if let distance = await self.fetchDistance(for: workout), distance >= 0.1 {
 					 filtered.append(workout)
 				  }
 			   }
 			} else {
-			   filtered = fetched
+			   filtered = rawWorkouts
 			}
+
+			// Finally, keep only up to 'limit' of them for display.
+			let displaySlice = Array(filtered.prefix(self.limit))
 
 			DispatchQueue.main.async {
 			   if page == 0 {
-				  self.workouts = filtered
+				  self.workouts = displaySlice
 			   } else {
-				  self.workouts.append(contentsOf: filtered)
+				  self.workouts.append(contentsOf: displaySlice)
 			   }
 			   self.isLoading = false
 			}
@@ -90,44 +105,12 @@ class PolyViewModel: ObservableObject {
 	  }
    }
 
-   /// Gets city name from cache or fallback geocoding
-   func fetchCityName(for workout: HKWorkout) async -> String? {
-	  if let cachedCity = cityNameCache[workout.uuid] {
-		 return cachedCity
-	  }
-
-	  guard let routes = await getWorkoutRoute(workout: workout),
-			let route = routes.first else {
-		 cityNameCache[workout.uuid] = "Unknown City"
-		 return "Unknown City"
-	  }
-
-	  let locations = await getCLocationDataForRoute(routeToExtract: route)
-	  guard let firstLocation = locations.first else {
-		 cityNameCache[workout.uuid] = "Unknown City"
-		 return "Unknown City"
-	  }
-
-	  let geocoder = CLGeocoder()
-	  do {
-		 let placemarks = try await geocoder.reverseGeocodeLocation(firstLocation)
-		 let city = placemarks.first?.locality ?? "Unknown City"
-		 cityNameCache[workout.uuid] = city
-		 return city
-	  } catch {
-		 print("Address not found: \(error.localizedDescription)")
-		 cityNameCache[workout.uuid] = "Unknown City"
-		 return "Unknown City"
-	  }
-   }
-
    /// Fetch distance from metadata if available; else route-based calculation.
    func fetchDistance(for workout: HKWorkout) async -> Double? {
 	  if let cached = distanceCache[workout.uuid] {
 		 return cached
 	  }
 
-	  // DP: Print entire metadata for debugging
 	  print("DP - Checking METADATA for workout \(workout.uuid): META: \(String(describing: workout.metadata))")
 
 	  // finalDistance can be stored as string or double
@@ -256,6 +239,8 @@ class PolyViewModel: ObservableObject {
 	  }
    }
 
+   /// Adjusted strategy: we rely on a larger limit from the caller if short-route filtering is on,
+   /// then we still only return up to 'limit' items from HK.
    func fetchPagedWorkouts(startDate: Date,
 						   endDate: Date,
 						   limit: Int,
@@ -281,6 +266,7 @@ class PolyViewModel: ObservableObject {
 		 self.healthStore.execute(query)
 	  }
 
+	  // Filter out any workouts that have no route or only invalid 0/0 coords:
 	  var filteredWorkouts: [HKWorkout] = []
 	  for w in allWorkouts {
 		 if let routes = await getWorkoutRoute(workout: w), !routes.isEmpty {
@@ -353,4 +339,36 @@ class PolyViewModel: ObservableObject {
 		 return []
 	  }
    }
+
+   /// Gets city name from cache or fallback geocoding
+   func fetchCityName(for workout: HKWorkout) async -> String? {
+	  if let cachedCity = cityNameCache[workout.uuid] {
+		 return cachedCity
+	  }
+
+	  guard let routes = await getWorkoutRoute(workout: workout),
+			let route = routes.first else {
+		 cityNameCache[workout.uuid] = "Unknown City"
+		 return "Unknown City"
+	  }
+
+	  let locations = await getCLocationDataForRoute(routeToExtract: route)
+	  guard let firstLocation = locations.first else {
+		 cityNameCache[workout.uuid] = "Unknown City"
+		 return "Unknown City"
+	  }
+
+	  let geocoder = CLGeocoder()
+	  do {
+		 let placemarks = try await geocoder.reverseGeocodeLocation(firstLocation)
+		 let city = placemarks.first?.locality ?? "Unknown City"
+		 cityNameCache[workout.uuid] = city
+		 return city
+	  } catch {
+		 print("Address not found: \(error.localizedDescription)")
+		 cityNameCache[workout.uuid] = "Unknown City"
+		 return "Unknown City"
+	  }
+   }
 }
+
