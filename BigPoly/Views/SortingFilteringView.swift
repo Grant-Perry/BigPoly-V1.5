@@ -6,7 +6,7 @@ struct SortingFilteringView: View {
 
    var body: some View {
 	  Form {
-		 Toggle("Filter < 0.1 miles", isOn: $polyViewModel.cbFilter)
+		 Toggle("Filter < 0.1 miles", isOn: $polyViewModel.shortRouteFilter)
 
 		 DatePicker("Start Date", selection: $polyViewModel.startDate, displayedComponents: .date)
 		 DatePicker("End Date", selection: $polyViewModel.endDate, displayedComponents: .date)

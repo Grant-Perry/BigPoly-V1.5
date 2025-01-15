@@ -10,7 +10,7 @@ class PolyViewModel: ObservableObject {
    @Published var startDate: Date = Calendar.current.date(byAdding: .day, value: -14, to: Date())
    ?? Date().addingTimeInterval(-14 * 24 * 3600)
    @Published var limit: Int = 15
-   @Published var cbFilter: Bool = true
+   @Published var shortRouteFilter: Bool = true
 
    /// Cache for city names keyed by workout UUID.
    var cityNameCache: [UUID: String] = [:]
@@ -63,7 +63,7 @@ class PolyViewModel: ObservableObject {
 			)
 
 			var filtered: [HKWorkout] = []
-			if self.cbFilter {
+			if self.shortRouteFilter {
 			   for workout in fetched {
 				  if let distance = await self.fetchDistance(for: workout), distance >= 0.1 {
 					 filtered.append(workout)

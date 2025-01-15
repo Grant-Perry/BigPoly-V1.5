@@ -13,7 +13,6 @@
 		9B4643282B751A6800833432 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9B4643272B751A6800833432 /* Assets.xcassets */; };
 		9B46432B2B751A6800833432 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9B46432A2B751A6800833432 /* Preview Assets.xcassets */; };
 		9B4643372B751AE900833432 /* Color+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4643362B751AE900833432 /* Color+Ext.swift */; };
-		9B4643392B751C1D00833432 /* polyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4643382B751C1D00833432 /* polyView.swift */; };
 		9B46433C2B751D5100833432 /* CityCoords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B46433B2B751D5100833432 /* CityCoords.swift */; };
 		9B46433E2B7522DE00833432 /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B46433D2B7522DE00833432 /* LoadingView.swift */; };
 		9B4643402B75233000833432 /* fullMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B46433F2B75233000833432 /* fullMapView.swift */; };
@@ -48,7 +47,6 @@
 		9B4643272B751A6800833432 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9B46432A2B751A6800833432 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9B4643362B751AE900833432 /* Color+Ext.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Color+Ext.swift"; sourceTree = "<group>"; };
-		9B4643382B751C1D00833432 /* polyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = polyView.swift; sourceTree = "<group>"; };
 		9B46433B2B751D5100833432 /* CityCoords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityCoords.swift; sourceTree = "<group>"; };
 		9B46433D2B7522DE00833432 /* LoadingView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 		9B46433F2B75233000833432 /* fullMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = fullMapView.swift; sourceTree = "<group>"; };
@@ -161,7 +159,6 @@
 				9B46433D2B7522DE00833432 /* LoadingView.swift */,
 				9B4643452B758B8700833432 /* MapView.swift */,
 				9B5269EF2B7D1F2400695BA6 /* PaginatedWorkoutView.swift */,
-				9B4643382B751C1D00833432 /* polyView.swift */,
 				9B5269F32B7D28BE00695BA6 /* SortingFilteringView.swift */,
 				9B5269F52B7D2DF100695BA6 /* WorkoutMetricsView.swift */,
 				9B5269DD2B78091900695BA6 /* WorkoutRouteView.swift */,
@@ -285,7 +282,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				9B5269E62B7928C300695BA6 /* Address.swift in Sources */,
-				9B4643392B751C1D00833432 /* polyView.swift in Sources */,
 				9B5269EC2B7AC1BF00695BA6 /* DateExt.swift in Sources */,
 				9B4643262B751A6700833432 /* ContentView.swift in Sources */,
 				9B5269E42B791BE100695BA6 /* GradientPathRenderer.swift in Sources */,
@@ -462,7 +458,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.80;
+				MARKETING_VERSION = 1.81;
 				PRODUCT_BUNDLE_IDENTIFIER = com.grantperry.BigPoly;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -498,7 +494,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.80;
+				MARKETING_VERSION = 1.81;
 				PRODUCT_BUNDLE_IDENTIFIER = com.grantperry.BigPoly;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
