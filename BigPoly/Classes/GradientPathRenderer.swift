@@ -7,9 +7,13 @@ public class GradientPathRenderer: MKOverlayPathRenderer {
    var showsBorder: Bool = false
    var borderColor: CGColor = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
 
-   public init(polyline: MKPolyline, colors: [CGColor]) {
+   public init(polyline: MKPolyline) {
 	  self.polyline = polyline
-	  self.colors = colors
+	  self.colors = [
+		 CGColor(red: 0, green: 1, blue: 0, alpha: 1),  // Green
+		 CGColor(red: 1, green: 1, blue: 0, alpha: 1),  // Yellow
+		 CGColor(red: 1, green: 0, blue: 0, alpha: 1)   // Red
+	  ]
 	  super.init(overlay: polyline)
    }
 
@@ -25,14 +29,7 @@ public class GradientPathRenderer: MKOverlayPathRenderer {
 	  }
 
 	  let colorspace = CGColorSpaceCreateDeviceRGB()
-	  // Evenly spaced stops
-	  let stopCount = colors.count
-	  let increments = 1.0 / CGFloat(stopCount - 1)
-	  var locations: [CGFloat] = []
-	  for i in 0..<stopCount {
-		 locations.append(CGFloat(i) * increments)
-	  }
-
+	  let locations: [CGFloat] = [0.0, 0.33, 0.66, 1.0] // Fixed stops for Green -> Yellow -> Red
 	  guard let gradient = CGGradient(colorsSpace: colorspace, colors: colors as CFArray, locations: locations) else {
 		 return
 	  }
@@ -45,25 +42,17 @@ public class GradientPathRenderer: MKOverlayPathRenderer {
 	  context.replacePathWithStrokedPath()
 	  context.clip()
 
-	  // Instead of using boundingBox, calculate start and end from the route's first and last coordinates
 	  if polyline.pointCount > 1 {
-		 let firstMapPoint = polyline.points()[0]
-		 let lastMapPoint = polyline.points()[polyline.pointCount - 1]
+		 for i in 0..<polyline.pointCount - 1 {
+			let startPoint = self.point(for: polyline.points()[i])
+			let endPoint = self.point(for: polyline.points()[i + 1])
+			let progress = CGFloat(i) / CGFloat(polyline.pointCount - 1)
 
-		 // Convert to view points
-		 let firstPoint = self.point(for: firstMapPoint)
-		 let lastPoint = self.point(for: lastMapPoint)
-
-		 // Use these points for the gradient direction
-		 let gradientStart = firstPoint
-		 let gradientEnd = lastPoint
-
-		 context.drawLinearGradient(gradient,
-									start: gradientStart,
-									end: gradientEnd,
-									options: .drawsBeforeStartLocation)
+			let color = progress < 0.33 ? colors[0] : (progress < 0.66 ? colors[1] : colors[2])
+			let segmentGradient = CGGradient(colorsSpace: colorspace, colors: [color, color] as CFArray, locations: [0.0, 1.0])
+			context.drawLinearGradient(segmentGradient!, start: startPoint, end: endPoint, options: [])
+		 }
 	  } else {
-		 // If we don't have at least two points, just fill with the first color
 		 context.setFillColor(colors.first ?? UIColor.red.cgColor)
 		 context.fillPath()
 	  }

@@ -22,16 +22,6 @@ struct PaginatedWorkoutsView: View {
 			   ProgressView()
 			}
 
-			//			Button(action: {
-			//			   currentPage += 1
-			//			   polyViewModel.loadWorkouts(page: currentPage)
-			//			}) {
-			//			   Text("Load More")
-			//				  .foregroundColor(.blue)
-			//				  .font(.system(size: 20))
-			//			}
-			//			.padding(.vertical, 8)
-
 			Text("\(AppConstants.appName) - ver: \(AppConstants.getVersion())")
 			   .font(.system(size: 14))
 			   .foregroundColor(.white)

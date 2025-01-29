@@ -3,63 +3,81 @@ import MapKit
 
 struct GradientMapView: UIViewRepresentable {
    var coordinates: [CLLocationCoordinate2D]
-
+   @Binding var mapType: MKMapType // Add a binding for map type selection
+   
    func makeUIView(context: Context) -> MKMapView {
 	  let mapView = MKMapView()
 	  mapView.delegate = context.coordinator
 	  mapView.isZoomEnabled = true
 	  mapView.isScrollEnabled = true
 	  mapView.isRotateEnabled = true
-
+	  mapView.mapType = mapType // Use the selected map type
+	  
 	  // Add polyline
 	  let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
 	  mapView.addOverlay(polyline)
-
-	  // Add annotations for start and end points if available
+	  
+	  // Add start and end annotations
 	  if let start = coordinates.first {
 		 let startAnnotation = MKPointAnnotation()
 		 startAnnotation.coordinate = start
 		 startAnnotation.title = "Start"
 		 mapView.addAnnotation(startAnnotation)
 	  }
-
+	  
 	  if let end = coordinates.last {
 		 let endAnnotation = MKPointAnnotation()
 		 endAnnotation.coordinate = end
 		 endAnnotation.title = "End"
 		 mapView.addAnnotation(endAnnotation)
 	  }
-
-	  // Set region to show entire route
-	  if let first = coordinates.first, let last = coordinates.last {
-		 let latDelta = abs(first.latitude - last.latitude) * 1.5
-		 let lonDelta = abs(first.longitude - last.longitude) * 1.5
-		 let region = MKCoordinateRegion(
-			center: CLLocationCoordinate2D(latitude: (first.latitude+last.latitude)/2,
-										   longitude: (first.longitude+last.longitude)/2),
-			span: MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: lonDelta)
-		 )
-		 mapView.setRegion(region, animated: false)
-	  }
-
+	  
+	  // Calculate the bounding box for all coordinates
+	  var minLat = coordinates.map { $0.latitude }.min() ?? 0
+	  var maxLat = coordinates.map { $0.latitude }.max() ?? 0
+	  var minLon = coordinates.map { $0.longitude }.min() ?? 0
+	  var maxLon = coordinates.map { $0.longitude }.max() ?? 0
+	  
+	  // Add padding to the bounding box (20%)
+	  let latPadding = (maxLat - minLat) * 0.2
+	  let lonPadding = (maxLon - minLon) * 0.2
+	  minLat -= latPadding
+	  maxLat += latPadding
+	  minLon -= lonPadding
+	  maxLon += lonPadding
+	  
+	  // Create region that encompasses all points
+	  let center = CLLocationCoordinate2D(
+		 latitude: (minLat + maxLat) / 2,
+		 longitude: (minLon + maxLon) / 2
+	  )
+	  let span = MKCoordinateSpan(
+		 latitudeDelta: maxLat - minLat,
+		 longitudeDelta: maxLon - minLon
+	  )
+	  let region = MKCoordinateRegion(center: center, span: span)
+	  
+	  // Set the region with animation disabled
+	  mapView.setRegion(region, animated: false)
+	  
 	  return mapView
    }
-
+   
    func updateUIView(_ uiView: MKMapView, context: Context) {
-	  // No dynamic updates needed
+	  uiView.mapType = mapType // Dynamically update the map type
    }
-
+   
    func makeCoordinator() -> Coordinator {
 	  Coordinator(self)
    }
-
+   
    class Coordinator: NSObject, MKMapViewDelegate {
 	  var parent: GradientMapView
-
+	  
 	  init(_ parent: GradientMapView) {
 		 self.parent = parent
 	  }
-
+	  
 	  func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
 		 if let polyline = overlay as? MKPolyline {
 			// Currently, it's green->yellow->red evenly spaced.
@@ -71,8 +89,8 @@ struct GradientMapView: UIViewRepresentable {
 			   UIColor.red.cgColor,
 			   UIColor.red.cgColor // Adding another red to emphasize the end portion as red
 			]
-
-			let renderer = GradientPathRenderer(polyline: polyline, colors: colors)
+			
+			let renderer = GradientPathRenderer(polyline: polyline)
 			renderer.lineWidth = 6
 			renderer.lineCap = .round
 			renderer.lineJoin = .round
@@ -80,7 +98,7 @@ struct GradientMapView: UIViewRepresentable {
 		 }
 		 return MKOverlayRenderer()
 	  }
-
+	  
 	  func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
 		 let annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: nil)
 		 if annotation.title == "Start" {
